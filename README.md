@@ -36,7 +36,8 @@ leaves the conversation is handed over for the user to send themselves.
 
 ## Install
 
-Copy (or clone) this folder into `~/.claude/skills/momentum-coach/`.
+Copy (or clone) this folder into your agent's skills directory, keeping the
+folder name `momentum-coach`.
 
 ## Status
 

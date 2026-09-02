@@ -4,7 +4,7 @@ Copy this file to `profile.md` in this same folder and fill in what you know.
 Everything is optional; skip anything you don't have an answer for. This file
 stays local to this skill folder — nothing here is synced or sent anywhere.
 Update it whenever a session teaches you something new about yourself; ask
-Claude to update it rather than hand-editing if that's easier.
+your agent to update it rather than hand-editing if that's easier.
 
 ## Energy patterns
 
