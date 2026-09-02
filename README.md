@@ -42,3 +42,7 @@ Copy (or clone) this folder into `~/.claude/skills/momentum-coach/`.
 
 Initial draft, open for review — trigger logic, category boundaries, and the
 eval cases in particular are worth pressure-testing before relying on it.
+
+## License
+
+[MIT](LICENSE)
