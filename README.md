@@ -39,6 +39,26 @@ leaves the conversation is handed over for the user to send themselves.
 Copy (or clone) this folder into your agent's skills directory, keeping the
 folder name `momentum-coach`.
 
+## Web app
+
+[`docs/index.html`](docs/index.html) is a standalone chat version for anyone
+without an agent that supports this skill format — a single self-contained
+page, no build step, no backend. It's live at:
+
+**https://simonaarsene22.github.io/momentum-coach/**
+
+It talks to Azure OpenAI / Microsoft Foundry directly from your browser:
+
+- Paste your own endpoint, deployment name, and API key in Settings — stored
+  only in that browser's `localStorage`, sent only to your resource. There is
+  no server in between, and nobody else's key or conversation is involved.
+- Your Azure OpenAI resource needs this page's origin allowed under
+  **Resource → Settings → Networking → CORS** or calls will fail with a
+  network error before ever reaching Azure.
+- The optional "About you" field plays the same role as
+  `references/profile-template.md` in the skill version — freeform context
+  about how you work, kept local, included on every message.
+
 ## Status
 
 Initial draft, open for review — trigger logic, category boundaries, and the

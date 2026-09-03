@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Momentum Coach</title>
+<style>
+  :root {
+    --bg: #f7f6f3;
+    --panel: #ffffff;
+    --border: #e2ddd4;
+    --text: #2b2820;
+    --text-dim: #6b6558;
+    --accent: #a8562f;
+    --accent-text: #ffffff;
+    --bubble-user: #efe9de;
+    --bubble-assistant: #ffffff;
+    --error: #b3432b;
+    --error-bg: #fbe9e4;
+    --shadow: 0 1px 2px rgba(30,25,15,0.06), 0 4px 12px rgba(30,25,15,0.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1a16;
+      --panel: #26231d;
+      --border: #3a352b;
+      --text: #ece7db;
+      --text-dim: #a39a86;
+      --accent: #d98055;
+      --accent-text: #1c1a16;
+      --bubble-user: #343026;
+      --bubble-assistant: #26231d;
+      --error: #e9836a;
+      --error-bg: #3a231d;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.25);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  body { display: flex; flex-direction: column; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+  header .title { display: flex; flex-direction: column; gap: 2px; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .sub { font-size: 12px; color: var(--text-dim); }
+  header .actions { display: flex; gap: 8px; }
+  button.icon-btn {
+    background: none; border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer;
+  }
+  button.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  main {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: flex; flex-direction: column; gap: 12px;
+    max-width: 720px; width: 100%; margin: 0 auto;
+  }
+  .empty-state {
+    margin: auto; text-align: center; color: var(--text-dim);
+    max-width: 480px; padding: 24px; font-size: 14px; line-height: 1.6;
+  }
+  .empty-state h2 { color: var(--text); font-size: 18px; margin-bottom: 8px; }
+
+  .msg { display: flex; }
+  .msg.user { justify-content: flex-end; }
+  .msg .bubble {
+    max-width: 80%; padding: 10px 14px; border-radius: 14px;
+    font-size: 14px; line-height: 1.55; white-space: pre-wrap; box-shadow: var(--shadow);
+  }
+  .msg.user .bubble { background: var(--bubble-user); border-bottom-right-radius: 4px; }
+  .msg.assistant .bubble { background: var(--bubble-assistant); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .msg.error .bubble { background: var(--error-bg); color: var(--error); border-bottom-left-radius: 4px; }
+  .msg.assistant.thinking .bubble { color: var(--text-dim); font-style: italic; }
+
+  footer {
+    border-top: 1px solid var(--border); background: var(--panel);
+    padding: 12px 20px; display: flex; justify-content: center;
+  }
+  .composer {
+    display: flex; gap: 8px; max-width: 720px; width: 100%; align-items: flex-end;
+  }
+  textarea#input {
+    flex: 1; resize: none; border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; font-size: 14px; font-family: inherit; background: var(--bg);
+    color: var(--text); max-height: 160px; min-height: 42px;
+  }
+  textarea#input:focus { outline: none; border-color: var(--accent); }
+  button#send {
+    background: var(--accent); color: var(--accent-text); border: none;
+    border-radius: 10px; padding: 10px 18px; font-size: 14px; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+  }
+  button#send:disabled { opacity: 0.5; cursor: default; }
+
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(20,17,10,0.45);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 10;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 22px; max-width: 460px; width: 100%; box-shadow: var(--shadow);
+    max-height: 88vh; overflow-y: auto;
+  }
+  .modal h2 { margin: 0 0 6px; font-size: 16px; }
+  .modal p.hint { color: var(--text-dim); font-size: 12.5px; line-height: 1.5; margin: 0 0 16px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 4px; }
+  .field input, .field textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--text); font-size: 13.5px; font-family: inherit;
+  }
+  .field textarea { resize: vertical; min-height: 60px; }
+  .field .note { font-size: 11.5px; color: var(--text-dim); margin-top: 4px; }
+  .modal-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 18px; }
+  .modal-actions .right { display: flex; gap: 8px; }
+  button.primary {
+    background: var(--accent); color: var(--accent-text); border: none;
+    border-radius: 8px; padding: 8px 16px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  }
+  button.secondary {
+    background: none; border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 8px 14px; font-size: 13.5px; cursor: pointer;
+  }
+  button.danger { color: var(--error); border-color: var(--error); background: none; border-radius: 8px; padding: 8px 14px; font-size: 13.5px; cursor: pointer; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">
+    <h1>Momentum Coach</h1>
+    <span class="sub">figure out why it stalled, then do something about it</span>
+  </div>
+  <div class="actions">
+    <button class="icon-btn" id="newChatBtn" title="Start a new conversation">New chat</button>
+    <button class="icon-btn" id="settingsBtn" title="Connection settings">Settings</button>
+  </div>
+</header>
+
+<main id="messages">
+  <div class="empty-state" id="emptyState">
+    <h2>What's stalled?</h2>
+    <p>Name the task and what's actually stopping you — not sure how, too many
+    pieces, don't want to, unclear what done looks like, waiting on someone,
+    or just out of bandwidth. Set your connection in Settings first.</p>
+  </div>
+</main>
+
+<footer>
+  <div class="composer">
+    <textarea id="input" placeholder="What's stalled, and what's stopping you?" rows="1"></textarea>
+    <button id="send">Send</button>
+  </div>
+</footer>
+
+<div class="modal-backdrop" id="settingsModal">
+  <div class="modal">
+    <h2>Connection settings</h2>
+    <p class="hint">
+      Everything here is stored only in this browser (localStorage) and sent
+      directly from your browser to your own Azure OpenAI / Microsoft Foundry
+      resource. Nothing passes through any other server.
+    </p>
+
+    <div class="field">
+      <label for="endpoint">Azure OpenAI endpoint</label>
+      <input id="endpoint" type="text" placeholder="https://your-resource.openai.azure.com" />
+    </div>
+    <div class="field">
+      <label for="deployment">Deployment name</label>
+      <input id="deployment" type="text" placeholder="e.g. gpt-4o" />
+    </div>
+    <div class="field">
+      <label for="apiVersion">API version</label>
+      <input id="apiVersion" type="text" placeholder="2024-10-21" />
+    </div>
+    <div class="field">
+      <label for="apiKey">API key</label>
+      <input id="apiKey" type="password" placeholder="paste your key" />
+      <div class="note">
+        Use a key scoped to this resource only if you can. This app has no
+        backend to protect it — it lives in your browser like any other
+        client-side credential.
+      </div>
+    </div>
+    <div class="field">
+      <label for="profile">About you (optional)</label>
+      <textarea id="profile" placeholder="Energy patterns, what a small first step looks like for you, go-to people, how you tend to avoid — anything that helps the coaching land better. Freeform, whatever you've got."></textarea>
+      <div class="note">Included as context on every message. Stored locally only.</div>
+    </div>
+
+    <p class="hint" id="corsHint">
+      First call failing with a network error, not a 401? Your Azure OpenAI
+      resource needs this page's origin allowed under
+      <strong>Resource → Settings → Networking → CORS</strong>
+      (Azure Portal) — add this page's URL, or <code>*</code> for testing.
+    </p>
+
+    <div class="modal-actions">
+      <button class="danger" id="clearDataBtn">Clear all local data</button>
+      <div class="right">
+        <button class="secondary" id="closeSettingsBtn">Cancel</button>
+        <button class="primary" id="saveSettingsBtn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const STORAGE_KEY = "momentum-coach:v1";
+
+  const SYSTEM_PROMPT = [
+"You are Momentum Coach, an assistant that helps people figure out why a specific",
+"piece of work has stalled and choose the right way to get moving again — not by",
+"cheerleading, but by diagnosing the actual cause first.",
+"",
+"SCOPE: You only produce conversation, diagnosis, and drafted text (a message to",
+"send, a scoped-down plan, a definition of done). You never claim to send messages,",
+"book time, or take action on the user's behalf — anything that leaves the",
+"conversation is handed to the user to send themselves.",
+"",
+"WHEN TO RUN THE FULL WORKFLOW: Only when the user names a specific task or piece",
+"of work AND signals a real stall — avoidance, being stuck, feeling overwhelmed,",
+"not knowing how, not knowing what 'done' means, waiting on someone, or being out",
+"of capacity. If there's no real stall (a routine question, completed work, a vague",
+"mood with no task attached), just help normally — don't force a diagnosis onto",
+"ordinary conversation.",
+"",
+"THE SEVEN CAUSES AND THEIR PRIMARY MOVE:",
+"1. Motivation dip (knows what to do, avoiding it) -> Take the next meaningful",
+"   action: shrink to a step under 15 minutes with no embedded decisions, get a",
+"   concrete time commitment for when they'll do it.",
+"2. Complexity overload (too many pieces, doesn't know where to start) -> Simplify",
+"   the task: dump everything to a flat list, sort into blocking / parallel / not-",
+"   needed-for-a-first-result, cut to the smallest slice that produces something real.",
+"3. Knowledge gap (doesn't know how to do a specific part) -> Learn in context: pin",
+"   the exact missing sub-skill, time-box learning to 15-30 minutes tied directly to",
+"   the next step, then attempt the real step.",
+"4. Unclear outcome (can't picture 'done') -> Ask if they could write their own",
+"   definition of done. If yes, treat as complexity overload (define scope, then",
+"   simplify). If it genuinely depends on someone else's authority, treat as a",
+"   blocked decision (case 6) instead.",
+"5. Missing support (solvable, but needs another person's skill or hands, not their",
+"   authority) -> Find help: name the specific capability needed, name who, draft a",
+"   scoped low-friction ask (what's needed, how long, by when).",
+"6. Blocked decision (waiting on an approval, input, access, or resource someone",
+"   else controls) -> Escalate a missing condition: name the exact missing condition",
+"   in one sentence, name who owns it, draft an escalation stating what's blocked",
+"   and the impact of it staying unresolved — no manufactured urgency.",
+"7. Limited capacity (genuinely out of time/energy, not avoidance) -> Check this",
+"   explicitly whenever something looks like low motivation: ask 'if this were the",
+"   only thing on your plate right now, would you have the energy?' If no, this is",
+"   capacity, not motivation. Intervene with a scaled-down next action (2-5 minutes,",
+"   goal is just keeping the thread alive) and, if it threatens a real commitment,",
+"   draft an escalation renegotiating scope or deadline.",
+"",
+"TRIAGE: Ask the smallest number of questions that resolves the category — cap at",
+"3. A good opener: 'When you picture actually starting, what's the thing that",
+"stops you — not sure how, too many pieces, don't want to, don't know what done",
+"looks like, waiting on someone, or no bandwidth right now?' If still unclear after",
+"3 questions, state your best guess and let the user correct it rather than",
+"continuing to probe.",
+"",
+"Before intervening, name the diagnosis back in one sentence and let the user",
+"confirm or correct it, e.g. 'Sounds like this isn't motivation, it's that the",
+"definition of done is fuzzy — fair?'",
+"",
+"GUARDRAILS:",
+"- Resolve which single category is primary before intervening; don't hand over a",
+"  grab-bag of five suggestions at once.",
+"- Capacity and motivation are not the same thing — the most common misfire is",
+"  treating a real capacity shortage as low motivation and telling someone to",
+"  'just push through.' Check for it explicitly.",
+"- Don't manufacture urgency or guilt.",
+"- Escalation and find-help outputs are drafts only, for the user to send",
+"  themselves — never imply they were sent.",
+"- End every turn on one concrete next action, not pure encouragement and not a",
+"  long roadmap — if a plan came out of the intervention, pull the very first step",
+"  out and confirm that's what happens next, now."
+  ].join("\n");
+
+  const state = load();
+
+  const messagesEl = document.getElementById("messages");
+  const emptyState = document.getElementById("emptyState");
+  const inputEl = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+  const settingsModal = document.getElementById("settingsModal");
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) { /* ignore, start fresh */ }
+    return { settings: { endpoint: "", deployment: "", apiVersion: "2024-10-21", apiKey: "", profile: "" }, history: [] };
+  }
+
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch (e) { /* storage unavailable, degrade to in-memory only */ }
+  }
+
+  function renderHistory() {
+    messagesEl.querySelectorAll(".msg").forEach(function (el) { el.remove(); });
+    if (state.history.length === 0) {
+      emptyState.style.display = "block";
+      return;
+    }
+    emptyState.style.display = "none";
+    state.history.forEach(function (m) { appendBubble(m.role, m.content); });
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function appendBubble(role, text, extraClass) {
+    emptyState.style.display = "none";
+    const wrap = document.createElement("div");
+    wrap.className = "msg " + role + (extraClass ? " " + extraClass : "");
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    bubble.textContent = text;
+    wrap.appendChild(bubble);
+    messagesEl.appendChild(wrap);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return wrap;
+  }
+
+  function hasConnection() {
+    const s = state.settings;
+    return s.endpoint && s.deployment && s.apiKey;
+  }
+
+  function buildUrl() {
+    const s = state.settings;
+    const base = s.endpoint.replace(/\/+$/, "");
+    const version = (s.apiVersion || "2024-10-21").trim();
+    return base + "/openai/deployments/" + encodeURIComponent(s.deployment) +
+      "/chat/completions?api-version=" + encodeURIComponent(version);
+  }
+
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    if (!hasConnection()) {
+      openSettings();
+      return;
+    }
+
+    inputEl.value = "";
+    autosize();
+    state.history.push({ role: "user", content: text });
+    appendBubble("user", text);
+    save();
+
+    sendBtn.disabled = true;
+    const thinking = appendBubble("assistant", "thinking…", "thinking");
+
+    let systemContent = SYSTEM_PROMPT;
+    if (state.settings.profile && state.settings.profile.trim()) {
+      systemContent += "\n\nUser profile notes (context about how this person works, optional and may be partial):\n" + state.settings.profile.trim();
+    }
+
+    // Send the system prompt plus a bounded window of recent turns.
+    const recent = state.history.slice(-16);
+    const payloadMessages = [{ role: "system", content: systemContent }].concat(recent);
+
+    try {
+      const res = await fetch(buildUrl(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "api-key": state.settings.apiKey
+        },
+        body: JSON.stringify({
+          messages: payloadMessages,
+          temperature: 0.6,
+          max_tokens: 800
+        })
+      });
+
+      thinking.remove();
+
+      if (!res.ok) {
+        let detail = "";
+        try { const j = await res.json(); detail = j.error && j.error.message ? j.error.message : JSON.stringify(j); }
+        catch (e) { detail = res.statusText; }
+        appendBubble("assistant", "Request failed (" + res.status + "): " + detail, "error");
+        return;
+      }
+
+      const data = await res.json();
+      const reply = data.choices && data.choices[0] && data.choices[0].message
+        ? data.choices[0].message.content
+        : "(no content in response)";
+      state.history.push({ role: "assistant", content: reply });
+      appendBubble("assistant", reply);
+      save();
+    } catch (err) {
+      thinking.remove();
+      appendBubble(
+        "assistant",
+        "Network error before a response came back. Most likely cause: your " +
+        "Azure OpenAI resource doesn't have this page's origin allowed under " +
+        "CORS yet (Resource → Settings → Networking → CORS in the Azure " +
+        "Portal). Details: " + (err && err.message ? err.message : String(err)),
+        "error"
+      );
+    } finally {
+      sendBtn.disabled = false;
+      inputEl.focus();
+    }
+  }
+
+  function autosize() {
+    inputEl.style.height = "auto";
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + "px";
+  }
+
+  function openSettings() {
+    document.getElementById("endpoint").value = state.settings.endpoint || "";
+    document.getElementById("deployment").value = state.settings.deployment || "";
+    document.getElementById("apiVersion").value = state.settings.apiVersion || "2024-10-21";
+    document.getElementById("apiKey").value = state.settings.apiKey || "";
+    document.getElementById("profile").value = state.settings.profile || "";
+    settingsModal.classList.add("open");
+  }
+
+  function closeSettings() {
+    settingsModal.classList.remove("open");
+  }
+
+  document.getElementById("settingsBtn").addEventListener("click", openSettings);
+  document.getElementById("closeSettingsBtn").addEventListener("click", closeSettings);
+  settingsModal.addEventListener("click", function (e) {
+    if (e.target === settingsModal) closeSettings();
+  });
+
+  document.getElementById("saveSettingsBtn").addEventListener("click", function () {
+    state.settings = {
+      endpoint: document.getElementById("endpoint").value.trim(),
+      deployment: document.getElementById("deployment").value.trim(),
+      apiVersion: document.getElementById("apiVersion").value.trim() || "2024-10-21",
+      apiKey: document.getElementById("apiKey").value.trim(),
+      profile: document.getElementById("profile").value
+    };
+    save();
+    closeSettings();
+  });
+
+  document.getElementById("clearDataBtn").addEventListener("click", function () {
+    if (!confirm("Clear settings, profile notes, and conversation history stored in this browser?")) return;
+    state.settings = { endpoint: "", deployment: "", apiVersion: "2024-10-21", apiKey: "", profile: "" };
+    state.history = [];
+    save();
+    renderHistory();
+    closeSettings();
+  });
+
+  document.getElementById("newChatBtn").addEventListener("click", function () {
+    state.history = [];
+    save();
+    renderHistory();
+  });
+
+  sendBtn.addEventListener("click", sendMessage);
+  inputEl.addEventListener("input", autosize);
+  inputEl.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  renderHistory();
+  if (!hasConnection()) {
+    // Give people a chance to see the empty state before the modal steals focus.
+    setTimeout(openSettings, 300);
+  }
+})();
+</script>
+</body>
+</html>
